@@ -36,6 +36,7 @@
 
 
 extern void* memset ( void * ptr, int value, size_t num );
+void uc8088_mm_init(void);
 void uc8088_init(void);
 
 u16 uc8088_read_memory(const u32 Addr, register u8* pBuffer, u16 NumByteToRead);	//读Num个Byte
@@ -47,6 +48,6 @@ void uc8088_write_u32(const u32 addr, u32 wdata);		//写一个u32数据（4个字节）
 u8 uc8088_read_u8(const u32 addr);									//读一个u8数据
 u16 uc8088_read_u16(const u32 addr);								//读一个u16数据
 u32 uc8088_read_u32(const u32 addr);								//读一个u32数据
-void uc8088_read_2_u32(const u32 addr, u32* r1, u32* r2);							//读两个u32数据
+void uc8088_read_2_u32(const u32 addr, volatile u32* r1, volatile u32* r2);							//读两个u32数据
 int uc8088_read_n_u32(const u32 addr, u32* arr, int n);		//读 n 个u32数据
 #endif

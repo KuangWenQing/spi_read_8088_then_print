@@ -14,7 +14,7 @@ u8 Buffer[2][SPI_BUF_LEN] = {0};
 
 volatile u8  rp_OK, wp_OK, cnt, send_flag=1;
 volatile u16 tmp, tmp1, number, ret;
-u32 rrp, wp, rp;
+volatile unsigned int rrp, wp, rp;
 
 void ByteChange(register u8 *pBuf, s16 len)
 {
@@ -93,18 +93,20 @@ u16 get_rp_wp_value()
 				number = (rp <= wp) ? (wp - rp) : (1024 - rp + wp);
 				if (number < 32){
 					wp_OK = 0;
+					rp_OK = 0;
 				}
-				else if((number*4 + str_len[which_buf]) > SPI_BUF_LEN)
+				else if((number*4 + str_len[which_buf]) > SPI_BUF_LEN){
 					wp_OK = 0;
+					rp_OK = 0;
+				}
 				else 
 					wp_OK = 1;
 				break;
 			}
-
+			
 			if(cnt++ > 3)
 			{
-				wp_OK = 0;
-				//printf("read rp and wp error! rrp = %d,  rp = %d,  wp = %d!\r\n", rrp, rp, wp);
+				printf("read rp and wp error! rrp = %d,  rp = %d,  wp = %d!\r\n", rrp, rp, wp);
 				if (((rp == 0xffffffff) && (wp == 0xffffffff)) || ((rp == 0) && (wp == 0)))
 						return 1;
 				else
@@ -124,9 +126,9 @@ void read_memory()
 			}
 			else{
 				tmp = uc8088_read_memory(Buf_addr + 8 + rp*4, Buffer[which_buf]+ str_len[which_buf], SPI_BUF_LEN - rp*4);
-				tmp1 = uc8088_read_memory(Buf_addr + 8, Buffer[which_buf]+ str_len[which_buf] + tmp, wp*4);
-				tmp = tmp + tmp1;
 				str_len[which_buf] += tmp;
+				tmp1 = uc8088_read_memory(Buf_addr + 8, Buffer[which_buf]+ str_len[which_buf], wp*4);
+				str_len[which_buf] += tmp1;
 			}
 			cnt = 0;  	rp_OK=0;		wp_OK=0;  rrp = 65536;
 }
@@ -168,28 +170,29 @@ int main(void)
 	ML302_init();
 	wp = 65536;
 	rrp = rp;
-	printf("begin while 1\r\n");
 	
 	begin:
+	wp_OK = rp_OK = 0;
 	if(read_test() != 0xabcd0001)
 		goto loop;
 	rrp = uc8088_read_u32(Buf_addr + 4);
-	while(1){
+
+	while(1){	
 		
-		ret = get_rp_wp_value();	// 获取读写指针位置
-		if (ret == 1)
-			goto end;
-		else if (ret == 2)
-			goto loop;
-		
-		
-		if(rp_OK == 1 && wp_OK == 1){	// 读取内存
-			LED0 = 0;
-			read_memory();
-			if(change_rp())
+		if(rp_OK == 1 && wp_OK == 1){			// 读取内存
+				LED0 = 0;
+				read_memory();
+				if(change_rp())
+					goto loop;
+				LED0 = 1;
+		}
+		else{
+			ret = get_rp_wp_value();	// 获取读写指针位置
+			if (ret == 1)
+				goto end;
+			else if (ret == 2)
 				goto loop;
 		}
-		LED0 = 1;
 		
 		if(str_len[which_buf] > 128)	// uart 打印内容
 		{
@@ -197,8 +200,9 @@ int main(void)
 			uart_send_data((unsigned char *) Buffer[which_buf], str_len[which_buf]);
 			which_buf = !which_buf;
 			str_len[which_buf] = 0;
+			LED1 = 1;
 		}
-		LED1 = 1;
+		
 	}
 	loop:
 	rrp = 5;
@@ -207,9 +211,11 @@ int main(void)
 	{
 		LED1 = !LED1;
 		
-		delay_ms(200);
-		if(read_test() == 0xabcd0001)
+		delay_ms(100);
+		uc8088_init();		//8088初始化
+		if(read_test() == 0xabcd0001){
 			goto begin;
+		}
 	}
 	goto begin;
 	end:
@@ -217,8 +223,10 @@ int main(void)
 	{
 		LED1 = !LED1;
 		delay_ms(500);
-		if(read_test() == 0xabcd0001)
+		uc8088_init();		//8088初始化
+		if(read_test() == 0xabcd0001){
 			goto begin;	
+		}
 	}
 }
 

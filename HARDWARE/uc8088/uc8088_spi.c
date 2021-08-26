@@ -2,11 +2,21 @@
 #include "spi.h"
 #include "delay.h"
 
+void uc8088_mm_init(void)
+{
+	int i ;
+	char wr_buf4[2] = {0x11, 0x1F};
+	for (i =0; i<2; i++)
+	{
+		SPI2_ReadWriteByte(wr_buf4[i]);
+		delay_us(10);
+	}
+}
 
 void uc8088_init(void)
 {
-	int i ;
-	char wr_buf4[2] = {0x11, 0x1F};	
+	
+		
 	GPIO_InitTypeDef GPIO_InitStructure;
 	
 	RCC_APB2PeriphClockCmd(	RCC_APB2Periph_GPIOB, ENABLE );//PORTB时钟使能 
@@ -21,11 +31,7 @@ void uc8088_init(void)
 	SPI2_SetSpeed(SPI_BaudRatePrescaler_2);			//频率过高杜邦线可能受不了
 	
 	SPI2_CS = 0;
-	for (i =0; i<2; i++)
-	{
-		SPI2_ReadWriteByte(wr_buf4[i]);
-		delay_us(10);
-	}
+	uc8088_mm_init();
 	SPI2_CS = 1;
 	delay_us(20);
 }
@@ -261,7 +267,7 @@ u32 uc8088_read_u32(const u32 addr)
 }
 
 //函数功能：读两个u32类型数据
-void uc8088_read_2_u32(const u32 addr, u32* r1, u32* r2)
+void uc8088_read_2_u32(const u32 addr, volatile u32* r1, volatile u32* r2)
 {
 	register int i;
 	u8 wr_buf[5] = {0};
